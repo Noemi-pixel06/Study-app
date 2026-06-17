@@ -39,11 +39,19 @@ body{font-family:var(--font-b);background:var(--bg-main);color:var(--text);min-h
 
 /* ══ FONDO ══ */
 #ocean-bg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;background:var(--ocean-bg);transition:background .8s}
-.wave-layer{position:absolute;bottom:0;left:-50%;width:200%;animation:waveDrift linear infinite;border-radius:50% 50% 0 0/20px 20px 0 0;opacity:0}
-.wave-layer:nth-child(1){height:120px;animation-duration:14s;opacity:.35;background:var(--wave1)}
-.wave-layer:nth-child(2){height:90px;animation-duration:18s;animation-direction:reverse;bottom:10px;opacity:.2;background:var(--wave2)}
-.wave-layer:nth-child(3){height:70px;animation-duration:22s;bottom:20px;opacity:.15;background:var(--glow2)}
 .bubble{position:absolute;border-radius:50%;background:radial-gradient(circle at 35% 35%,var(--bubble),transparent);border:1px solid var(--bubble-b);animation:bubbleRise linear infinite;pointer-events:none}
+
+/* ══ PECES SVG ══ */
+.fish-item{position:absolute;pointer-events:none;animation:fishSwim linear infinite}
+@keyframes fishSwim{
+  0%  {transform:translateX(-120px)}
+  100%{transform:translateX(calc(100vw + 120px))}
+}
+.fish-item.fish-rtl{animation-name:fishSwimRTL;transform:scaleX(-1)}
+@keyframes fishSwimRTL{
+  0%  {transform:scaleX(-1) translateX(-120px)}
+  100%{transform:scaleX(-1) translateX(calc(100vw + 120px))}
+}
 
 /* ══ KEYFRAMES ══ */
 @keyframes waveDrift{0%{transform:translateX(0)}100%{transform:translateX(50%)}}
@@ -56,6 +64,7 @@ body{font-family:var(--font-b);background:var(--bg-main);color:var(--text);min-h
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes glowPulse{0%,100%{filter:drop-shadow(0 0 8px var(--accent))}50%{filter:drop-shadow(0 0 22px var(--accent2))}}
 @keyframes slideDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes tailWag{0%,100%{d:path('M-18 0 Q-10 -5 0 0 Q-10 5 -18 0')}50%{d:path('M-18 0 Q-10 5 0 0 Q-10 -5 -18 0')}}
 
 /* ══ AUTH WALL ══ */
 #authWall{position:fixed;inset:0;z-index:1000;background:var(--ocean-bg);display:flex;align-items:center;justify-content:center;flex-direction:column;padding:20px;transition:background .8s;overflow-y:auto}
@@ -209,17 +218,6 @@ textarea.form-input{resize:vertical;min-height:80px;line-height:1.5}
 .profile-opt-img img{width:52px;height:52px;object-fit:cover;border-radius:50%}
 .profile-opt-name{font-size:10px;color:var(--text2);text-align:center;font-weight:500;line-height:1.2}
 .profile-opt-danger{font-size:8px;color:var(--err);text-align:center;font-weight:700}
-
-/* ══ VOZ MEDUSA (GÉNERO) ══ */
-.voice-section{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
-.voice-section-title{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;letter-spacing:.4px;text-transform:uppercase}
-.voice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.voice-opt{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;padding:14px 10px;border-radius:14px;border:2px solid var(--border);transition:all .25s;background:rgba(0,0,0,.15)}
-.voice-opt:hover{border-color:var(--accent);background:var(--glow);transform:translateY(-2px)}
-.voice-opt.selected{border-color:var(--accent2);background:var(--glow);box-shadow:0 0 0 1px var(--accent2) inset}
-.voice-opt-emoji{font-size:30px}
-.voice-opt-label{font-size:12px;font-weight:600;color:var(--text)}
-.voice-opt-sub{font-size:10px;color:var(--text3)}
 
 /* ══ CRIATURA ══ */
 .creature-img-wrap{height:200px;background:linear-gradient(135deg,var(--glow),var(--glow2));border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;overflow:hidden;position:relative}
@@ -402,7 +400,6 @@ textarea.form-input{resize:vertical;min-height:80px;line-height:1.5}
     <div class="profile-modal-note">🌊 Elige tu animal marino como avatar.</div>
     <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;letter-spacing:.4px;text-transform:uppercase">Animales disponibles</div>
     <div class="profile-grid" id="profileGrid"></div>
-
     <div class="modal-actions"><button class="btn-secondary" onclick="closeModal('profileModal')">Cerrar</button></div>
   </div>
 </div>
@@ -533,11 +530,8 @@ textarea.form-input{resize:vertical;min-height:80px;line-height:1.5}
 
 <script>
 'use strict';
-/* ═══════════════════════════════════════════════════════
-   OCÉANO QUIZ — Edición simplificada (sin verificación / sin API)
-═══════════════════════════════════════════════════════ */
 
-// ══ STORAGE ══
+/* ══ STORAGE ══ */
 const ls  = (k,d)  => { try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch{ return d; } };
 const lss = (k,v)  => { try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} };
 const getUsers    = ()    => ls('oq_users',[]);
@@ -551,14 +545,12 @@ const savePending = d     => lss('oq_pending',d);
 const getApproved = ()    => ls('oq_approved',[]);
 const saveApproved= d     => lss('oq_approved',d);
 
-// ══ GLOBALES ══
+/* ══ GLOBALES ══ */
 let currentUser=null, QS={}, tourStep=0, jellyTimer, qBlocks=[], qCounter=0, adminTab='pending';
-const ADMIN_CODE='';
 const RND = a => a[Math.floor(Math.random()*a.length)];
 const shuffle = a => [...a].sort(()=>Math.random()-.5);
 
-// ══ CATÁLOGO DE ANIMALES ══
-// El campo 'img' contiene la ruta real del archivo dentro de /static/images/
+/* ══ CATÁLOGO DE ANIMALES ══ */
 const ANIMALS = [
   {
     id: 'medusa',
@@ -652,7 +644,7 @@ function animalImgSrc(id){
   return animal ? animal.img : '/static/images/medusa.png';
 }
 
-// ══ BANCO DE PREGUNTAS ══
+/* ══ BANCO DE PREGUNTAS ══ */
 const QUESTION_POOLS = {
   geo:{name:'Geografía',icon:'🌍',pool:[{q:'¿Cuál es el océano más grande?',opts:['Atlántico','Pacífico','Índico','Ártico'],correct:1},{q:'¿Capital de Francia?',opts:['Lyon','Burdeos','París','Marsella'],correct:2},{q:'¿En qué continente está Brasil?',opts:['África','Asia','Europa','América del Sur'],correct:3},{q:'¿Cuál es el país con mayor extensión territorial?',opts:['China','EE.UU','Canadá','Rusia'],correct:3},{q:'¿Cuál es el río más largo del mundo?',opts:['Amazonas','Nilo','Misisipi','Yangtsé'],correct:1},{q:'¿Cuál es la montaña más alta del mundo?',opts:['K2','Aconcagua','Everest','Mont Blanc'],correct:2},{q:'¿En qué país se encuentra la Torre Eiffel?',opts:['Italia','España','Alemania','Francia'],correct:3},{q:'¿Cuántos continentes hay en la Tierra?',opts:['5','6','7','8'],correct:2},{q:'¿Cuál es el desierto más grande del mundo?',opts:['Sahara','Kalahari','Ártico','Gobi'],correct:0},{q:'¿En qué continente está Egipto?',opts:['Asia','Europa','América','África'],correct:3},{q:'¿Cuál es el lago más grande del mundo?',opts:['Lago Victoria','Mar Caspio','Lago Superior','Lago Baikal'],correct:1},{q:'¿Cuál es la capital de Japón?',opts:['Osaka','Kioto','Tokio','Hiroshima'],correct:2},{q:'¿Cuántos países tiene América del Sur?',opts:['10','12','14','16'],correct:1},{q:'¿En qué país está la mayor parte del Amazonas?',opts:['Perú','Colombia','Venezuela','Brasil'],correct:3},{q:'¿Cuál es el océano más pequeño?',opts:['Pacífico','Índico','Atlántico','Ártico'],correct:3}]},
   ocean:{name:'El Océano',icon:'🐠',pool:[{q:'¿Cuál es el animal marino más grande?',opts:['Tiburón ballena','Cachalote','Raya manta','Ballena azul'],correct:3},{q:'¿Qué porcentaje del océano ha sido explorado?',opts:['Menos del 5%','Cerca del 20%','Alrededor del 50%','Más del 80%'],correct:0},{q:'¿Qué porcentaje de la superficie terrestre cubre el océano?',opts:['51%','61%','71%','81%'],correct:2},{q:'¿Cuál es la fosa oceánica más profunda?',opts:['Fosa de Puerto Rico','Fosa de las Marianas','Fosa del Perú','Fosa de Tonga'],correct:1},{q:'¿Aproximadamente cuánto mide la Fosa de las Marianas?',opts:['7,000 m','9,000 m','11,000 m','13,000 m'],correct:2},{q:'¿Qué porcentaje del oxígeno terrestre produce el océano?',opts:['20%','35%','50%','70%'],correct:2},{q:'¿Cuál es la corriente oceánica más grande?',opts:['Corriente del Golfo','Corriente de Humboldt','Corriente Circumpolar Antártica','Corriente de California'],correct:2},{q:'¿Los corales son animales, plantas o minerales?',opts:['Plantas','Minerales','Algas','Animales'],correct:3},{q:'¿Cuál es la especie de tiburón más grande?',opts:['Gran tiburón blanco','Tiburón toro','Tiburón ballena','Tiburón tigre'],correct:2},{q:'¿Qué son las mareas rojas?',opts:['Corrientes cálidas','Proliferación de algas tóxicas','Contaminación por petróleo','Fenómeno de El Niño'],correct:1},{q:'¿Cómo se llama la zona sin luz solar en el océano?',opts:['Zona fótica','Zona mesopelágica','Zona hadal','Zona afótica'],correct:3},{q:'¿Cuánta sal contiene aproximadamente 1 litro de agua marina?',opts:['5 g','35 g','70 g','100 g'],correct:1},{q:'¿Cuál es el océano más cálido en promedio?',opts:['Atlántico','Ártico','Índico','Pacífico'],correct:2},{q:'¿Qué fenómeno provoca las corrientes oceánicas superficiales?',opts:['La presión submarina','El viento','Las mareas lunares','La temperatura del fondo'],correct:1},{q:'¿Qué animal marino puede regenerar sus extremidades?',opts:['Tiburón','Estrella de mar','Ballena','Delfín'],correct:1}]},
@@ -664,29 +656,15 @@ const QUESTION_POOLS = {
   mexico:{name:'México',icon:'🇲🇽',pool:[{q:'¿Cuál es la capital de México?',opts:['Guadalajara','Monterrey','Puebla','Ciudad de México'],correct:3},{q:'¿En qué año se consumó la Independencia de México?',opts:['1810','1814','1821','1824'],correct:2},{q:'¿Cuál es el volcán más alto de México?',opts:['Popocatépetl','Iztaccíhuatl','Pico de Orizaba','Nevado de Toluca'],correct:2},{q:'¿En qué estado de México se encuentra Chichén Itzá?',opts:['Oaxaca','Chiapas','Yucatán','Campeche'],correct:2},{q:'¿Cuál es el animal en el escudo nacional de México?',opts:['Jaguar','Puma','Águila real','Quetzal'],correct:2},{q:'¿Quién pintó el mural "Sueño de una tarde dominical en la Alameda"?',opts:['Frida Kahlo','Rufino Tamayo','José Clemente Orozco','Diego Rivera'],correct:3},{q:'¿En qué océano tiene costas México al occidente?',opts:['Atlántico','Índico','Pacífico','Ártico'],correct:2},{q:'¿Cuál es el río fronterizo más importante entre México y EE.UU.?',opts:['Río Grijalva','Río Lerma','Río Bravo','Río Usumacinta'],correct:2},{q:'¿Qué civilización construyó Teotihuacán?',opts:['Azteca','Maya','Olmeca','Se desconoce con certeza'],correct:3},{q:'¿Cuántos estados tiene la República Mexicana?',opts:['28','30','31','32'],correct:2},{q:'¿Cuál es la moneda oficial de México?',opts:['Dólar','Quetzal','Peso mexicano','Sol'],correct:2},{q:'¿En qué año ocurrió el gran terremoto de Ciudad de México?',opts:['1982','1985','1988','1992'],correct:1},{q:'¿Cuál es la flor nacional de México?',opts:['Rosa','Orquídea','Dalia','Girasol'],correct:2},{q:'¿En qué estado mexicano se encuentra la ciudad de Oaxaca?',opts:['Guerrero','Puebla','Oaxaca','Chiapas'],correct:2},{q:'¿Cuál es la zona arqueológica del Templo de las Inscripciones?',opts:['Tulum','Uxmal','Monte Albán','Palenque'],correct:3}]},
 };
 
-// ══ FUNCIONES DE CATEGORÍAS ══
+/* ══ CATEGORÍAS ══ */
 function getAllCategories(){
-  console.log("QUESTION_POOLS:", QUESTION_POOLS);
-
   const off = Object.entries(QUESTION_POOLS).map(([id,cat])=>({
-    id,
-    name:cat.name,
-    icon:cat.icon,
-    official:true,
-    pool:cat.pool
+    id, name:cat.name, icon:cat.icon, official:true, pool:cat.pool
   }));
-
   const com = getApproved().map(q=>({
-    id:'user_'+q.id,
-    name:q.title,
-    icon:'🌟',
-    official:false,
-    questions:q.questions,
-    authorName:q.authorName
+    id:'user_'+q.id, name:q.title, icon:'🌟', official:false,
+    questions:q.questions, authorName:q.authorName
   }));
-
-  console.log("Categorías finales:", [...off,...com]);
-
   return [...off,...com];
 }
 
@@ -695,36 +673,112 @@ function getQuestionsForCat(cat,n=8){
   return cat.questions||[];
 }
 
+/* ══ VOZ ══ */
 const VOZ = {
   enabled: true,
   synth: window.speechSynthesis,
-
-  hablar(texto, rate = 0.92, pitch = 1) {
-    if (!this.enabled) return;
-
+  hablar(texto, rate=0.92, pitch=1){
+    if(!this.enabled) return;
     this.synth.cancel();
-
     const u = new SpeechSynthesisUtterance(texto);
-    u.lang = "es-ES";
-    u.rate = rate;
-    u.pitch = pitch;
-
+    u.lang='es-ES'; u.rate=rate; u.pitch=pitch;
     this.synth.speak(u);
   },
-
-  detener() {
-    this.synth.cancel();
-  },
-
-  toggle() {
+  detener(){ this.synth.cancel(); },
+  toggle(){
     this.enabled = !this.enabled;
-    if (!this.enabled) this.detener();
+    if(!this.enabled) this.detener();
     document.getElementById('volBtn').textContent = this.enabled ? '🔊' : '🔇';
     toast(this.enabled ? '🔊 Voz activada' : '🔇 Voz desactivada');
   }
 };
 
-// ══ TOUR ══
+/* ── MENSAJES DE MEDUSA ── */
+const F = {
+  bienvenida: u => RND([`¡Hola de nuevo, ${u}! 🌊`,`¡Bienvenido, ${u}! ¿Listo para explorar?`,`¡El océano te espera, ${u}! 🐠`]),
+  correcto:   () => RND(['¡Correcto! ¡Eres increíble! ✨','¡Exacto! Sigues brillando 🌟','¡Perfecto! El océano te sonríe 🌊']),
+  incorrecto: r  => `La respuesta correcta era: ${r}`,
+  final:      (u,p,cat) => p>=80?`¡Felicidades ${u}! Obtuviste ${p}% en ${cat}. ¡Eres un experto marino!`:p>=60?`Bien hecho, ${u}. ${p}% en ${cat}. ¡Sigue practicando!`:`${p}% en ${cat}. ¡No te rindas, ${u}! Inténtalo de nuevo.`
+};
+
+/* ══ PECES ANIMADOS ══ */
+/* Definiciones SVG de siluetas de peces en distintos tamaños/colores */
+const FISH_SHAPES = [
+  /* pez clásico tropical */
+  (c,s)=>`<svg width="${s*2.2}" height="${s}" viewBox="0 0 44 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="22" cy="10" rx="14" ry="7" fill="${c}" opacity="0.82"/>
+    <polygon points="8,10 0,4 0,16" fill="${c}" opacity="0.7"/>
+    <ellipse cx="32" cy="8" rx="3" ry="2" fill="${c}" opacity="0.5"/>
+    <circle cx="34" cy="9" r="1.4" fill="white" opacity="0.9"/>
+    <circle cx="34.4" cy="9" r="0.7" fill="#1a2a3a"/>
+    <path d="M14 6 Q22 3 30 6" stroke="white" stroke-width="0.6" fill="none" opacity="0.3"/>
+  </svg>`,
+  /* pez gordito */
+  (c,s)=>`<svg width="${s*1.8}" height="${s*1.2}" viewBox="0 0 36 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="19" cy="11" rx="12" ry="9" fill="${c}" opacity="0.8"/>
+    <polygon points="7,11 0,5 0,17" fill="${c}" opacity="0.65"/>
+    <path d="M13 5 Q19 2 27 5" stroke="white" stroke-width="0.7" fill="none" opacity="0.35"/>
+    <path d="M13 17 Q19 20 27 17" stroke="white" stroke-width="0.7" fill="none" opacity="0.35"/>
+    <circle cx="30" cy="10" r="1.6" fill="white" opacity="0.9"/>
+    <circle cx="30.5" cy="10" r="0.8" fill="#1a2a3a"/>
+  </svg>`,
+  /* pez estilizado alargado */
+  (c,s)=>`<svg width="${s*3}" height="${s*0.7}" viewBox="0 0 60 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="32" cy="7" rx="20" ry="5" fill="${c}" opacity="0.78"/>
+    <polygon points="12,7 0,2 0,12" fill="${c}" opacity="0.65"/>
+    <circle cx="50" cy="6" r="1.2" fill="white" opacity="0.9"/>
+    <circle cx="50.3" cy="6" r="0.6" fill="#1a2a3a"/>
+  </svg>`,
+];
+
+const FISH_COLORS_DARK  = ['#21a5a0','#57c5c0','#1f7a8c','#a0e4e0','#7ecaca','#3dd9d0','#4ab8c4'];
+const FISH_COLORS_LIGHT = ['#0088aa','#00b0b0','#00c8c0','#008899','#33aaaa','#00a0a8'];
+
+function spawnFish(){
+  const bg = document.getElementById('ocean-bg');
+  const isLight = document.body.classList.contains('light-mode');
+  const palette  = isLight ? FISH_COLORS_LIGHT : FISH_COLORS_DARK;
+
+  function createFish(){
+    const rtl   = Math.random() < 0.4;
+    const size  = 12 + Math.random() * 22;
+    const color = palette[Math.floor(Math.random() * palette.length)];
+    const shape = FISH_SHAPES[Math.floor(Math.random() * FISH_SHAPES.length)];
+    const top   = 5 + Math.random() * 88;
+    const dur   = 18 + Math.random() * 28;
+    const delay = Math.random() * 20;
+    const opacity = 0.35 + Math.random() * 0.45;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'fish-item' + (rtl ? ' fish-rtl' : '');
+    wrapper.style.cssText = `
+      top:${top}%;
+      opacity:${opacity};
+      animation-duration:${dur}s;
+      animation-delay:-${delay}s;
+      z-index:0;
+    `;
+    wrapper.innerHTML = shape(color, size);
+    bg.appendChild(wrapper);
+
+    const totalMs = (dur + delay) * 1000;
+    setTimeout(() => {
+      wrapper.remove();
+      createFish();
+    }, totalMs - delay * 1000 + 1000);
+  }
+
+  /* Crear banco inicial de peces escalonados */
+  const N = 8;
+  for(let i = 0; i < N; i++){
+    setTimeout(createFish, i * 1800);
+  }
+
+  /* Reponer peces continuamente */
+  setInterval(createFish, 4000);
+}
+
+/* ══ TOUR ══ */
 const TOUR_STEPS=[
   {j:'🪼',t:'¡Hola! Soy Marina',tx:'Tu guía en el Océano Quiz. ¡Vamos a explorar el conocimiento marino!',v:'¡Hola! Soy Marina, tu guía marina.'},
   {j:'🎯',t:'Preguntas que cambian',tx:'Cada tema oficial tiene un banco de 15 preguntas. Cada vez que juegas se eligen 8 al azar.',v:'Las preguntas cambian en cada intento.'},
@@ -737,13 +791,13 @@ function renderTourStep(){const s=TOUR_STEPS[tourStep];document.getElementById('
 function nextTourStep(){if(tourStep<TOUR_STEPS.length-1){tourStep++;renderTourStep();}else endTour();}
 function endTour(){document.getElementById('tour-overlay').classList.remove('open');VOZ.detener();const ud=getUD(currentUser.id);ud.tourDone=true;saveUD(currentUser.id,ud);setTimeout(()=>showJellyBubble('¡Ya conoces todo! 🌊'),300);}
 
-// ══ MEDUSA ══
+/* ══ MEDUSA ══ */
 function setJellyMood(mood){const m=document.getElementById('jelly-mouth');if(!m)return;m.setAttribute('d',mood==='happy'?'M31 44 Q40 53 49 44':mood==='sad'?'M33 49 Q40 43 47 49':'M33 45 Q40 51 47 45');}
 function showJellyBubble(msg,dur=4000){const b=document.getElementById('jelly-bubble');if(!b||b.style.display==='none')return;b.textContent=msg;b.classList.add('show');clearTimeout(jellyTimer);jellyTimer=setTimeout(()=>b.classList.remove('show'),dur);}
-const JELLY_MSGS=['¡El 70% de la Tierra es océano! 🌊','Los ajolotes están en peligro crítico.','Las medusas existen hace 500 millones de años.','Los corales son animales, ¡no plantas!','El pulpo tiene 9 cerebros. ¡Increíble!','los peces son amigos no comida','La ballena azul es el ser más grande de la historia.'];
+const JELLY_MSGS=['¡El 70% de la Tierra es océano! 🌊','Los ajolotes están en peligro crítico.','Las medusas existen hace 500 millones de años.','Los corales son animales, ¡no plantas!','El pulpo tiene 9 cerebros. ¡Increíble!','¡Los peces son amigos, no comida!','La ballena azul es el ser más grande de la historia.'];
 function jellyTalk(){const msg=RND(JELLY_MSGS);setJellyMood('happy');showJellyBubble(msg,5000);VOZ.hablar(msg,0.9,1.1);setTimeout(()=>setJellyMood('neutral'),3000);}
 
-// ══ UTILS ══
+/* ══ UTILS ══ */
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 let _tt;
@@ -753,7 +807,7 @@ function hideErr(id){const e=document.getElementById(id);if(e)e.classList.remove
 function showOk(id,msg){const e=document.getElementById(id);if(!e)return;e.textContent=msg;e.classList.add('visible');}
 function toggleTheme(){const l=document.body.classList.contains('light-mode');document.body.classList.toggle('light-mode');document.getElementById('themeToggle').textContent=l?'🌙':'☀️';localStorage.setItem('oq_theme',l?'dark':'light');}
 
-// ══ AUTH ══
+/* ══ AUTH ══ */
 function switchAuthTab(tab){
   const map={login:{tab:'authTabLogin',panel:'authPanelLogin'},register:{tab:'authTabReg',panel:'authPanelReg'}};
   Object.entries(map).forEach(([k,v])=>{document.getElementById(v.tab)?.classList.toggle('active',k===tab);document.getElementById(v.panel)?.classList.toggle('active',k===tab);});
@@ -776,25 +830,37 @@ function doRegister(){
   if(!p||p.length<4){showErr('regErr','⚠ Contraseña de al menos 4 caracteres.');return;}
   const users=getUsers();
   if(users.find(x=>x.username.toLowerCase()===u.toLowerCase())){showErr('regErr','⚠ Ese usuario ya existe.');return;}
-  const nu={id:Date.now()+'',username:u,password:p,isAdmin:code===ADMIN_CODE,banned:false,avatar:'medusa',medusaGender:'F',joined:new Date().toLocaleDateString('es-MX')};
+  const nu={id:Date.now()+'',username:u,password:p,isAdmin:code===ADMIN_CODE,banned:false,avatar:'medusa',joined:new Date().toLocaleDateString('es-MX')};
   users.push(nu);saveUsers(users);loginSuccess(nu);
 }
+
+/* ══ FIX PRINCIPAL: loginSuccess sin VOZ.init ni renderVoiceGrid ══ */
 function loginSuccess(user){
-  currentUser=user;
-  if(!currentUser.medusaGender) currentUser.medusaGender='F';
+  currentUser = user;
   setCurrent(currentUser);
   document.getElementById('authWall').classList.add('hidden');
-  document.getElementById('app').style.display='';
-  document.getElementById('jellyfish-container').style.display='';
-  document.getElementById('jelly-bubble').style.display='';
-  document.getElementById('adminNavBtn').style.display=user.isAdmin?'':'none';
-  document.getElementById('topName').textContent=user.username;
-  updateTopAvatar();renderProfileGrid();renderVoiceGrid();VOZ.init();
+  document.getElementById('app').style.display = '';
+  document.getElementById('jellyfish-container').style.display = '';
+  document.getElementById('jelly-bubble').style.display = '';
+  document.getElementById('adminNavBtn').style.display = user.isAdmin ? '' : 'none';
+  document.getElementById('topName').textContent = user.username;
+  updateTopAvatar();
+  renderProfileGrid();
+  /* VOZ.init() eliminado — el objeto VOZ no necesita inicialización */
   showScreen('homeScreen');
-  const ud=getUD(user.id);
-  if(!ud.tourDone){setTimeout(startTour,600);}
-  else{setJellyMood('happy');setTimeout(()=>{const m=F.bienvenida(user.username);showJellyBubble(m);VOZ.hablar(m);},400);}
+  const ud = getUD(user.id);
+  if(!ud.tourDone){
+    setTimeout(startTour, 600);
+  } else {
+    setJellyMood('happy');
+    setTimeout(()=>{
+      const m = F.bienvenida(user.username);
+      showJellyBubble(m);
+      VOZ.hablar(m);
+    }, 400);
+  }
 }
+
 function doLogout(){
   currentUser=null;setCurrent(null);VOZ.detener();
   document.getElementById('authWall').classList.remove('hidden');
@@ -806,17 +872,11 @@ function doLogout(){
   switchAuthTab('login');
 }
 
-// ══ AVATARES ══
+/* ══ AVATARES ══ */
 function buildAvatarImgTag(animalId,size){
   const animal=ANIMALS.find(a=>a.id===(animalId||'medusa'))||ANIMALS[0];
   const src=animalImgSrc(animal.id);
-  return `<img src="${src}" alt="${animal.name}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;display:block" onerror="this.style.display='none';var fb=this.parentNode.querySelector('.av-fallback');if(fb)fb.style.display='flex';">
-  <span class="av-fallback" style="display:none">
-  <img
-    src="/static/images/medusa.png"
-    alt="Avatar"
-    style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover">
-</span>`;
+  return `<img src="${src}" alt="${animal.name}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;display:block" onerror="this.style.display='none'">`;
 }
 function updateTopAvatar(){if(!currentUser)return;document.getElementById('topAvatarWrap').innerHTML=buildAvatarImgTag(currentUser.avatar,34);}
 function renderProfileGrid(){
@@ -824,91 +884,67 @@ function renderProfileGrid(){
   document.getElementById('profileGrid').innerHTML=ANIMALS.map(a=>`
     <div class="profile-opt${a.id===sel?' selected':''}" onclick="selectAnimalAvatar('${a.id}')" title="${a.name}">
       <div class="profile-opt-img">
-        <img src="${animalImgSrc(a.id)}" alt="${a.name}" style="width:52px;height:52px;border-radius:50%;object-fit:cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-        <span style="display:none">
-  <img
-    src="/static/images/medusa.png"
-    alt="Avatar"
-    style="width:52px;height:52px;border-radius:50%;object-fit:cover">
-</span>
+        <img src="${animalImgSrc(a.id)}" alt="${a.name}" style="width:52px;height:52px;border-radius:50%;object-fit:cover" onerror="this.style.display='none'">
       </div>
       <div class="profile-opt-name">${a.name}</div>
       ${a.peligro?'<div class="profile-opt-danger">⚠ En peligro</div>':''}
     </div>`).join('');
 }
 
-function openModal(id){
-  document.getElementById(id).classList.add('open');
-}
-
-function closeModal(id){
-  document.getElementById(id).classList.remove('open');
-}
-
 function selectAnimalAvatar(aid){
   if(!currentUser) return;
-
   currentUser.avatar = aid;
-
   const users = getUsers();
-  const u = users.find(x => x.id === currentUser.id);
-
-  if(u){
-    u.avatar = aid;
-    saveUsers(users);
-  }
-
+  const u = users.find(x=>x.id===currentUser.id);
+  if(u){ u.avatar=aid; saveUsers(users); }
   setCurrent(currentUser);
   updateTopAvatar();
   renderProfileGrid();
-
-  const animal = ANIMALS.find(a => a.id === aid);
+  const animal = ANIMALS.find(a=>a.id===aid);
   toast(`${animal.name} seleccionado`);
-
   closeModal('profileModal');
-  setTimeout(() => {
-    showCreature(aid);
-  }, 300);
+  setTimeout(()=>showCreature(aid), 300);
 }
 
-function speakCreature(a){
-  const c = a.info;
-
-  const u = new SpeechSynthesisUtterance(`${a.name}. ${c.caracteres}`);
-  u.lang = "es-ES";
-  u.rate = 0.9;
-  u.pitch = 1;
-
-  speechSynthesis.cancel();
-  speechSynthesis.speak(u);
-}
-
-
-// ══ FICHA DE CRIATURA ══
+/* ══ FICHA DE CRIATURA ══ */
 function showCreature(aid){
   const a=ANIMALS.find(x=>x.id===aid);if(!a||!a.info)return;
   const c=a.info;
-  const badge=a.peligro?'<span style="display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(255,107,107,.2);border:1px solid rgba(255,107,107,.3);color:var(--err);margin-bottom:14px">⚠ EN PELIGRO DE EXTINCIÓN</span>':'<span style="display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(67,217,178,.2);border:1px solid rgba(67,217,178,.3);color:var(--ok);margin-bottom:14px">✓ Población Estable</span>';
-  const imgBlock=`<div class="creature-img-fallback" style="display:none"></div>`;
+  const badge=a.peligro
+    ?'<span style="display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(255,107,107,.2);border:1px solid rgba(255,107,107,.3);color:var(--err);margin-bottom:14px">⚠ EN PELIGRO DE EXTINCIÓN</span>'
+    :'<span style="display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(67,217,178,.2);border:1px solid rgba(67,217,178,.3);color:var(--ok);margin-bottom:14px">✓ Población Estable</span>';
   const isUserAnimal=currentUser&&currentUser.avatar===aid;
-  const userBlock=currentUser?`<div class="creature-user-badge"><div class="creature-user-avatar"><img src="${animalImgSrc(currentUser.avatar||'medusa')}" alt="Tu avatar" onerror="this.outerHTML='<span style=\\'font-size:22px;line-height:38px;text-align:center;display:block\\'>${(ANIMALS.find(x=>x.id===(currentUser.avatar||'medusa'))||ANIMALS[0])}</span>'" style="width:38px;height:38px;object-fit:cover;border-radius:50%"></div><div><div class="creature-user-name">${currentUser.username}</div><div class="creature-user-sub">${isUserAnimal?'🌟 Este es tu animal marino actual':'🔍 Explorando este animal'}</div></div></div>`:'';
+  const userBlock=currentUser?`<div class="creature-user-badge"><div class="creature-user-avatar"><img src="${animalImgSrc(currentUser.avatar||'medusa')}" alt="avatar" style="width:38px;height:38px;object-fit:cover;border-radius:50%" onerror="this.style.display='none'"></div><div><div class="creature-user-name">${currentUser.username}</div><div class="creature-user-sub">${isUserAnimal?'🌟 Este es tu animal marino actual':'🔍 Explorando este animal'}</div></div></div>`:'';
   const sec=(t,tx)=>`<div style="background:rgba(0,0,0,.2);border-left:3px solid var(--accent);border-radius:10px;padding:11px;margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">${t}</div><div style="font-size:13px;color:var(--text2);line-height:1.6">${tx}</div></div>`;
-  document.getElementById('creatureCard').innerHTML=`${imgBlock}<div style="font-family:var(--font-h);font-size:24px;color:var(--accent2);margin-bottom:3px">${a.name}</div><div style="font-size:13px;color:var(--text2);font-style:italic;margin-bottom:10px">${c.cientifico}</div>${badge}${userBlock}${sec('Características',c.caracteres)}${sec('Alimentación',c.come)}${sec('Hábitat',c.habitat)}<div style="background:rgba(0,0,0,.2);border-left:3px solid var(--accent);border-radius:10px;padding:11px"><div style="font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Curiosidades</div><ul style="font-size:13px;color:var(--text2);line-height:1.7;padding-left:16px">${c.curiosidades.map(cu=>`<li style="margin-bottom:4px">${cu}</li>`).join('')}</ul></div>`;
-  openModal('creatureModal');VOZ.hablar(`${a.name}. ${c.caracteres}`,0.88,1.05);
+  document.getElementById('creatureCard').innerHTML=`
+    <div style="font-family:var(--font-h);font-size:24px;color:var(--accent2);margin-bottom:3px">${a.name}</div>
+    <div style="font-size:13px;color:var(--text2);font-style:italic;margin-bottom:10px">${c.cientifico}</div>
+    ${badge}${userBlock}
+    ${sec('Características',c.caracteres)}
+    ${sec('Alimentación',c.come)}
+    ${sec('Hábitat',c.habitat)}
+    <div style="background:rgba(0,0,0,.2);border-left:3px solid var(--accent);border-radius:10px;padding:11px">
+      <div style="font-size:11px;font-weight:700;color:var(--accent2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px">Curiosidades</div>
+      <ul style="font-size:13px;color:var(--text2);line-height:1.7;padding-left:16px">
+        ${c.curiosidades.map(cu=>`<li style="margin-bottom:4px">${cu}</li>`).join('')}
+      </ul>
+    </div>`;
+  openModal('creatureModal');
+  VOZ.hablar(`${a.name}. ${c.caracteres}`,0.88,1.05);
 }
 
-// ══ NAVEGACIÓN ══
+/* ══ NAVEGACIÓN ══ */
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id)?.classList.add('active');
   document.querySelectorAll('.nav-btn[data-screen]').forEach(b=>b.classList.toggle('active',b.dataset.screen===id));
   if(id==='statsScreen')renderStats();
-  if(id==='homeScreen'); renderHome();
+  if(id==='homeScreen')renderHome();
   if(id==='createScreen')renderMyQuizzes();
   if(id==='adminScreen')renderAdmin();
 }
 
-// ══ HOME ══
+/* ══ HOME ══ */
 function renderHome(){
   if(!currentUser)return;
   const ud=getUD(currentUser.id);
@@ -918,16 +954,20 @@ function renderHome(){
   document.getElementById('chipAvg').textContent=avg+'%';
   document.getElementById('chipPoints').textContent=ud.points;
   const cats=getAllCategories();
-  console.log(document.getElementById('categoriesGrid'));
   document.getElementById('categoriesGrid').innerHTML=cats.map(cat=>{
     const played=ud.history.filter(h=>h.catId===cat.id).length;
     const best=played?Math.max(...ud.history.filter(h=>h.catId===cat.id).map(h=>h.pct)):null;
     const n=cat.official?cat.pool.length:cat.questions?.length||0;
-    return `<div class="category-card" onclick="startQuiz('${cat.id}')"><div class="cat-badge ${cat.official?'official':'community'}">${cat.official?'Oficial':'Comunidad'}</div><div class="cat-icon">${cat.icon}</div><div class="cat-name">${cat.name}</div><div class="cat-meta">${n} en banco${played?` · ${played}× jugado`:''}${best!==null?` · Mejor: ${best}%`:''}</div></div>`;
+    return `<div class="category-card" onclick="startQuiz('${cat.id}')">
+      <div class="cat-badge ${cat.official?'official':'community'}">${cat.official?'Oficial':'Comunidad'}</div>
+      <div class="cat-icon">${cat.icon}</div>
+      <div class="cat-name">${cat.name}</div>
+      <div class="cat-meta">${n} en banco${played?` · ${played}× jugado`:''}${best!==null?` · Mejor: ${best}%`:''}</div>
+    </div>`;
   }).join('');
 }
 
-// ══ QUIZ ══
+/* ══ QUIZ ══ */
 function startQuiz(catId){
   const cats=getAllCategories();const cat=cats.find(c=>c.id===catId);if(!cat)return;
   const qs=getQuestionsForCat(cat,8);if(!qs.length){toast('Este quiz no tiene preguntas.');return;}
@@ -985,7 +1025,7 @@ function renderResults(score,total,pct){
   setJellyMood(pct>=60?'happy':'sad');showJellyBubble(pct>=60?`¡${pct}%! 🌟`:`${pct}%... ¡La próxima! 💙`,5000);
 }
 
-// ══ ESTADÍSTICAS ══
+/* ══ ESTADÍSTICAS ══ */
 function renderStats(){
   if(!currentUser)return;const ud=getUD(currentUser.id);
   const total=ud.history.length,avg=total?Math.round(ud.history.reduce((a,b)=>a+b.pct,0)/total):0,best=total?Math.max(...ud.history.map(h=>h.pct)):0;
@@ -995,7 +1035,7 @@ function renderStats(){
   hist.innerHTML=ud.history.slice(0,15).map(h=>`<div class="user-row"><div class="user-row-info"><div><div class="user-row-name">${h.catName}</div><div class="user-row-meta">${h.score}/${h.total} correctas · ${h.date}</div></div></div><div style="font-size:18px;font-weight:700;color:${h.pct>=80?'var(--ok)':h.pct>=60?'var(--warn)':'var(--err)'}">${h.pct}%</div></div>`).join('');
 }
 
-// ══ CREAR QUIZ ══
+/* ══ CREAR QUIZ ══ */
 function initCreateScreen(){
   qBlocks=[];qCounter=0;document.getElementById('questionsContainer').innerHTML='';
   ['cqTitle','cqCategory','cqDesc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -1036,7 +1076,7 @@ function renderMyQuizzes(){
   el.innerHTML=all.map(q=>{const icon=q.status==='approved'?'✅':'⏳';const txt=q.status==='approved'?'Aprobado':'Pendiente de revisión';const col=q.status==='approved'?'var(--ok)':'var(--warn)';return `<div class="quiz-review-card"><div class="qrc-header"><div class="qrc-meta"><div class="qrc-title">${q.title}</div><div class="qrc-sub">${q.category} · ${q.questions.length} preguntas · ${q.date}</div></div><div style="font-size:12px;font-weight:700;color:${col}">${icon} ${txt}</div></div></div>`;}).join('');
 }
 
-// ══ ADMIN ══
+/* ══ ADMIN ══ */
 function renderAdmin(){
   if(!currentUser?.isAdmin)return;
   const p=getPending(),a=getApproved(),u=getUsers();
@@ -1051,7 +1091,7 @@ function renderAdminPanel(tab){
   if(tab==='users'){
     const users=getUsers();const el=document.getElementById('adminPanelUsers');
     if(!users.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">👥</div>No hay usuarios.</div>';return;}
-    el.innerHTML=users.map(u=>{const animal=ANIMALS.find(a=>a.id===u.avatar)||ANIMALS[0];const avHTML=`<img src="${animalImgSrc(animal.id)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0" alt="${animal.name}" onerror="this.outerHTML='<span style=\\'font-size:22px;flex-shrink:0\\'>${animal.id}</span>'">`;return `<div class="user-row"><div class="user-row-info">${avHTML}<div><div class="user-row-name">${u.username}${u.isAdmin?'<span class="badge-admin" style="margin-left:6px">ADMIN</span>':''}${u.banned?'<span class="badge-banned" style="margin-left:6px">SUSPENDIDO</span>':''}</div><div class="user-row-meta">Desde ${u.joined||'—'} · ${animal.name}</div></div></div><div>${!u.isAdmin?`<button class="${u.banned?'btn-success':'btn-danger'}" style="padding:6px 12px;font-size:12px" onclick="toggleBan('${u.id}')">${u.banned?'Rehabilitar':'Suspender'}</button>`:'<span style="font-size:12px;color:var(--text3)">Admin protegido</span>'}</div></div>`;}).join('');
+    el.innerHTML=users.map(u=>{const animal=ANIMALS.find(a=>a.id===u.avatar)||ANIMALS[0];const avHTML=`<img src="${animalImgSrc(animal.id)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0" alt="${animal.name}" onerror="this.style.display='none'">`;return `<div class="user-row"><div class="user-row-info">${avHTML}<div><div class="user-row-name">${u.username}${u.isAdmin?'<span class="badge-admin" style="margin-left:6px">ADMIN</span>':''}${u.banned?'<span class="badge-banned" style="margin-left:6px">SUSPENDIDO</span>':''}</div><div class="user-row-meta">Desde ${u.joined||'—'} · ${animal.name}</div></div></div><div>${!u.isAdmin?`<button class="${u.banned?'btn-success':'btn-danger'}" style="padding:6px 12px;font-size:12px" onclick="toggleBan('${u.id}')">${u.banned?'Rehabilitar':'Suspender'}</button>`:'<span style="font-size:12px;color:var(--text3)">Admin protegido</span>'}</div></div>`;}).join('');
   }
 }
 function renderQCard(q,type){const pq=q.questions[0];return `<div class="quiz-review-card"><div class="qrc-header"><div class="qrc-meta"><div class="qrc-title">${q.title}</div><div class="qrc-sub">Por: ${q.authorName} · ${q.category} · ${q.questions.length} preg. · ${q.date}</div>${q.desc?`<div style="font-size:12px;color:var(--text2);margin-top:4px">${q.desc}</div>`:''}</div><div class="qrc-actions">${type==='pending'?`<button class="btn-success" style="padding:8px 14px;font-size:12px" onclick="approveQuiz('${q.id}')">✅ Aprobar</button><button class="btn-danger" style="padding:8px 14px;font-size:12px" onclick="rejectQuiz('${q.id}')">🗑 Rechazar</button>`:`<button class="btn-danger" style="padding:8px 14px;font-size:12px" onclick="removeApproved('${q.id}')">🗑 Eliminar</button>`}</div></div>${pq?`<div class="qrc-preview"><div class="qrc-q">Vista previa P1: ${pq.q}</div><div class="qrc-opts">${pq.opts.map((o,i)=>`<span class="qrc-opt${i===pq.correct?' correct':''}">${String.fromCharCode(65+i)}. ${o}</span>`).join('')}</div></div>`:''}</div>`;}
@@ -1060,10 +1100,18 @@ function rejectQuiz(id){if(!confirm('¿Rechazar y eliminar este quiz?'))return;s
 function removeApproved(id){if(!confirm('¿Eliminar este quiz aprobado?'))return;saveApproved(getApproved().filter(q=>q.id!==id));toast('🗑 Quiz eliminado');renderAdmin();}
 function toggleBan(uid){if(uid===currentUser.id){toast('No puedes suspenderte a ti mismo.');return;}const users=getUsers();const u=users.find(x=>x.id===uid);if(!u)return;u.banned=!u.banned;saveUsers(users);toast(u.banned?`🚫 ${u.username} suspendido`:`✅ ${u.username} rehabilitado`);renderAdmin();}
 
-// ══ BURBUJAS ══
-function spawnBubbles(){const bg=document.getElementById('ocean-bg');setInterval(()=>{const b=document.createElement('div');b.className='bubble';const sz=4+Math.random()*12;b.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;bottom:-20px;animation-duration:${8+Math.random()*12}s;animation-delay:${Math.random()*2}s`;bg.appendChild(b);setTimeout(()=>b.remove(),22000);},1200);}
+/* ══ BURBUJAS ══ */
+function spawnBubbles(){
+  const bg=document.getElementById('ocean-bg');
+  setInterval(()=>{
+    const b=document.createElement('div');b.className='bubble';
+    const sz=4+Math.random()*12;
+    b.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;bottom:-20px;animation-duration:${8+Math.random()*12}s;animation-delay:${Math.random()*2}s`;
+    bg.appendChild(b);setTimeout(()=>b.remove(),22000);
+  },1200);
+}
 
-// ══ INICIALIZACIÓN ══
+/* ══ INICIALIZACIÓN ══ */
 document.addEventListener('DOMContentLoaded',()=>{
   if(localStorage.getItem('oq_theme')==='light'){document.body.classList.add('light-mode');document.getElementById('themeToggle').textContent='☀️';}
   document.getElementById('loginBtn').addEventListener('click',doLogin);
@@ -1076,14 +1124,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('volBtn').addEventListener('click',()=>VOZ.toggle());
   document.getElementById('logoutBtn').addEventListener('click',doLogout);
   document.getElementById('logoBtn').addEventListener('click',()=>showScreen('homeScreen'));
-  const userChip = document.getElementById('userChip');
-    if (userChip) {
-      userChip.addEventListener('click', () => {
-        renderProfileGrid();
-        if (typeof renderVoiceGrid === 'function') renderVoiceGrid();
-        openModal('profileModal');
-  });
-}
+  const userChip=document.getElementById('userChip');
+  if(userChip){userChip.addEventListener('click',()=>{renderProfileGrid();openModal('profileModal');});}
   document.querySelectorAll('.nav-btn[data-screen]').forEach(btn=>{btn.addEventListener('click',()=>{const sc=btn.dataset.screen;if(sc==='createScreen')initCreateScreen();showScreen(sc);});});
   document.querySelectorAll('.admin-tab[data-admin-tab]').forEach(tab=>{tab.addEventListener('click',()=>switchAdminTab(tab.dataset.adminTab));});
   document.getElementById('btnSkip').addEventListener('click',skipQuestion);
@@ -1096,20 +1138,21 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('tour-skip').addEventListener('click',endTour);
   document.getElementById('tour-next').addEventListener('click',nextTourStep);
   document.querySelectorAll('.modal-overlay').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
+
+  /* Animaciones de fondo */
   spawnBubbles();
+  spawnFish();
+
+  /* Sesión persistente */
   const saved=getCurrent();
   if(saved){
     const fresh=getUsers().find(u=>u.id===saved.id);
-    if(fresh&&!fresh.banned){
-      loginSuccess(fresh);
-      return;
-    }
+    if(fresh&&!fresh.banned){loginSuccess(fresh);return;}
   }
   document.getElementById('authWall').classList.remove('hidden');
 });
 </script>
 </body>
 </html>
-
 
 
