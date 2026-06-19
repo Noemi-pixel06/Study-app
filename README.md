@@ -22,21 +22,35 @@ Crear una plataforma educativa que haga el aprendizaje:
 -Más interactivo
 
 
+
 *Características
+
 -Sistema de registro e inicio de sesión
+
 -Quizzes por categorías
+
 -Sistema de puntuación en tiempo real
+
 -Revisión de respuestas correctas e incorrectas
+
 -Perfil de usuario con estadísticas
+
 -Diseño oceánico con animaciones (burbujas, peces, etc.)
+
 -Modo claro y oscuro
+
 -Creación de quizzes personalizados
 
 
+
 *Tecnologías utilizadas
+
 -HTML5
+
 -CSS3 (variables, animaciones, diseño responsive)
+
 -Flask
+
 
 
 *Vista del proyecto
@@ -45,7 +59,10 @@ Crear una plataforma educativa que haga el aprendizaje:
 
 
 *Idea del proyecto
+
 Este proyecto fue creado para combinar educación y entretenimiento mediante una experiencia tipo videojuego.
+
+
 
 *Desarrollado por: [Noemi-pixel06]
 
