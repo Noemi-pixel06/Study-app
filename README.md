@@ -2,16 +2,23 @@
 Donde el aprendizaje fluye como el océano
 
 
+
 *Descripción
+
 Océano Quiz Ultimate es una aplicación web interactiva tipo quiz inspirada en el océano.
 Permite a los usuarios aprender jugando a través de preguntas dinámicas, categorías y resultados personalizados.
 El proyecto está diseñado con una interfaz moderna, animaciones marinas y experiencia gamificada.
 
 
+
 *Objetivo
+
 Crear una plataforma educativa que haga el aprendizaje:
+
 -Divertido
+
 -Visual
+
 -Más interactivo
 
 
